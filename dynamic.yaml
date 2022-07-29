@@ -4,3 +4,4 @@ http:
     redirect:
       redirectScheme:
         scheme: https
+## You can use another middleware what you want

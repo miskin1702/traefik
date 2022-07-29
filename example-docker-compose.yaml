@@ -1,0 +1,67 @@
+version: "3"
+services:
+  ################################################
+  ####  FIRST SERVER ON PORT 80 DEFAULT EXPOSED  #####
+  ## Dont forget ssl certificate created automaticly by traefik :)
+  ## Dont forget this is just example for see Traefik work!
+  ###############################################
+  nginx: # <== we aren't going to open :80 here because traefik is going to serve this on entrypoint 'web'
+                ## :80 is already exposed from within the container ##
+    image: nginx
+    restart: always
+    ## We said create 2 replica from this container for load balancer appear from Dahsboard
+    deploy:
+      replicas: 2
+    ## Join out traefik network , when we created traefik container
+    networks:
+      - web
+    ## Those labels for traefik settings for our container
+    labels:
+      #### Labels define the behavior and rules of the traefik proxy for this container ####
+      - "traefik.enable=true" # <== Enable traefik to proxy this container
+        # Give random name and replace 'nginx', ex: '...test.web...' 
+        # Dont remember you just change nginx, NOT CHANGE 'web'
+        # This setting about http after we set' we routing to https
+        # and change 'example.com' to your Domain name, it also maybe subdomain
+      - "traefik.http.routers.nginx-web.rule=Host(`example.com`)" # <== Your Domain Name goes here for the http rule
+      - "traefik.http.routers.nginx-web.entrypoints=web" # <== Defining the entrypoint for http, **ref: line 30
+      - "traefik.http.routers.nginx-web.middlewares=redirect@file" # <== This is a middleware to redirect to https
+      
+      # Also change this name 'nginx' to whatever name you give above
+      - "traefik.http.routers.nginx-secured.rule=Host(`example.com`)" # <== Your Domain Name for the https rule 
+      - "traefik.http.routers.nginx-secured.entrypoints=web-secured" # <== Defining entrypoint for https, **ref: line 31
+      - "traefik.http.routers.nginx-secured.tls.certresolver=mytlschallenge" # <== Defining certsresolvers for https
+
+
+
+ ################################################
+  ####  SECOND SERVER ON PORT 3000 DEFAULT EXPOSED  #####
+  ## traefik automatic dedect which port exposed 
+  ## we dont need say to traefik which port exposed by container  
+  ###############################################
+  other-nginx: # <== we aren't going to open :80 here because traefik is going to serve this on entrypoint 'web'
+                ## :80 is already exposed from within the container ##
+    image: nginx
+    restart: always
+    networks:
+      - web
+    volumes:
+      - ./content:/usr/share/nginx/html:ro
+    # exposed another port for see another port  automatic dedect by traefik :)
+    environment:
+      - NGINX_PORT=3000
+    labels:
+      #### Labels define the behavior and rules of the traefik proxy for this container ####
+      - "traefik.enable=true" # <== Enable traefik to proxy this container
+      - "traefik.http.routers.other-web.rule=Host(`other.example.com`)" # <== Your Domain Name goes here for the http rule
+      - "traefik.http.routers.other-web.entrypoints=web" # <== Defining the entrypoint for http, **ref: line 30
+      - "traefik.http.routers.other-web.middlewares=redirect@file" # <== This is a middleware to redirect to https
+      - "traefik.http.routers.other-secured.rule=Host(`other.example.com`)" # <== Your Domain Name for the https rule 
+      - "traefik.http.routers.other-secured.entrypoints=web-secured" # <== Defining entrypoint for https, **ref: line 31
+      - "traefik.http.routers.other-secured.tls.certresolver=mytlschallenge" # <== Defining certsresolvers for https
+
+### we said to containers our network is created, you dont create
+### just join into 'web' network. 
+networks:
+  web:
+    external: true
